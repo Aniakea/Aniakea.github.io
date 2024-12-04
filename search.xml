@@ -8,7 +8,7 @@
       <link href="/2024/11/29/anaconda%E5%AE%89%E8%A3%85/"/>
       <url>/2024/11/29/anaconda%E5%AE%89%E8%A3%85/</url>
       
-        <content type="html"><![CDATA[]]></content>
+        <content type="html"><![CDATA[<h3 id="为什么需要-anaconda">为什么需要 anaconda</h3><h3 id="下载和安装">下载和安装</h3><h3 id="基本使用">基本使用</h3>]]></content>
       
       
       <categories>
@@ -31,11 +31,11 @@
     
     
     <entry>
-      <title>尝试在c++中嵌入python解释器的过程</title>
+      <title>在c++中嵌入python解释器</title>
       <link href="/2024/11/27/%E5%B0%9D%E8%AF%95%E5%9C%A8c-%E4%B8%AD%E5%B5%8C%E5%85%A5python%E8%A7%A3%E9%87%8A%E5%99%A8%E7%9A%84%E8%BF%87%E7%A8%8B/"/>
       <url>/2024/11/27/%E5%B0%9D%E8%AF%95%E5%9C%A8c-%E4%B8%AD%E5%B5%8C%E5%85%A5python%E8%A7%A3%E9%87%8A%E5%99%A8%E7%9A%84%E8%BF%87%E7%A8%8B/</url>
       
-        <content type="html"><![CDATA[]]></content>
+        <content type="html"><![CDATA[<p>还是哪个展示应力模型的项目, 由于是基于之前的项目的, 而之前的项目的gui是qt做的, 之前又没有告诉我需要嵌入这个程序, 而我python的已经写完了</p><p>所以开始研究嵌入方案</p><p>首先需要确定python是否独立运行于老的gui程序</p><p>如果独立运行的情况, 我需要在python端额外写一个网络模块来和老gui程序进行交互,两边都得改, 怪麻烦的, 不考虑</p><p>非独立运行的话, 就需要嵌入python解释器来执行我写的python代码</p><h3 id="准备">准备</h3><p>首先我们先安装 pybind11 库, 这是个 head-only 的库, 所以只需要下载源码, 在项目中添加头文件搜索的路径即可</p><p>先下载, <s>最简单的方案就是去github下载zip(he</s></p><p>为了不出现违法收入, 我们使用<code>gitee</code>的镜像, <a href="https://gitee.com/mirrors/pybind11">链接</a></p><p>直接一键下载或者使用git</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># if has ssh</span></span><br><span class="line">git <span class="built_in">clone</span> git@gitee.com:mirrors/pybind11.git</span><br><span class="line"></span><br><span class="line"><span class="comment"># or use https</span></span><br><span class="line">git <span class="built_in">clone</span> https://gitee.com/mirrors/pybind11.git</span><br></pre></td></tr></table></figure><p>如果是项目是cmake的话可以直接用 <code>FetchContent</code></p><figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">include</span>(FetchContent)</span><br><span class="line"></span><br><span class="line">FetchContent_Declare(</span><br><span class="line">        pybind11</span><br><span class="line">        GIT_REPOSITORY https://gitee.com/mirrors/pybind11.git</span><br><span class="line">        GIT_TAG v2.<span class="number">13</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">FetchContent_MakeAvailable(pybind11)</span><br></pre></td></tr></table></figure><p>如果环境变量中包含python的路径会自动寻找到python和libpython</p><p>可惜的是, 这<s>傻逼</s>项目用的qmake, 所以我们只能在pro文件里手动加include路径和link路径了</p><h3 id="使用">使用</h3><p>这里建议去逛<a href="https://pybind11.readthedocs.io/en/stable/index.html">官方文档</a>, 比我这啰啰嗦嗦好多了, 在这我只讲一些我遇见的坑</p><ol><li class="lvl-3"><p>解释器需要自己设置<code>pythonhome</code>, 不设置的话啥都import不了但是pybind11库没有提供接口, 只能使用libpython提供的c接口, libpython提供的接口命名又怪的要死</p></li><li class="lvl-3"><p>暂留, 之后想起来了再更新</p></li></ol>]]></content>
       
       
       <categories>
