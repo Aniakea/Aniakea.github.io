@@ -8,7 +8,7 @@
       <link href="/2024/11/29/anaconda%E5%AE%89%E8%A3%85/"/>
       <url>/2024/11/29/anaconda%E5%AE%89%E8%A3%85/</url>
       
-        <content type="html"><![CDATA[<p><img src="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/IMG_0239.PNG" alt=""></p><h3 id="为什么需要-anaconda">为什么需要 anaconda</h3><h3 id="下载和安装">下载和安装</h3><h3 id="基本使用">基本使用</h3>]]></content>
+        <content type="html"><![CDATA[<!-- ![IMG_0239](https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/IMG_0239.PNG) --><h3 id="为什么需要-anaconda">为什么需要 anaconda</h3><p>python 本身提供了一个项目级别的虚拟环境</p><p>但是如果我们需要在不同的项目中使用不同的python版本</p><p>这就是python自己提供的 venv 无法做到的事情</p><p>所以我们需要一个外部的环境管理器来做这种级别的隔离</p><p>这就是使用 anaconda 的原因</p><h3 id="下载和安装">下载和安装</h3><h3 id="基本使用">基本使用</h3>]]></content>
       
       
       <categories>
