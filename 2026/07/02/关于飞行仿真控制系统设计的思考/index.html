@@ -1,0 +1,371 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>关于分布式飞行仿真控制系统设计的思考 | Vanessa</title><meta name="author" content="lain,riskming@icloud.com"><meta name="copyright" content="lain"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="什么是控制系统 我通常把控制系统理解为一套“观察状态、做出判断、发出指令并修正结果”的机制。它会先获取被控制对象的当前状态，例如位置、速度、姿态、温度或任务进度；然后将这些状态和期望目标进行比较；最后通过某种执行机构或软件指令，让系统逐步靠近期望状态。 在我看来，一个典型的控制系统往往包含三个部分：输入、控制器和输出。输入描述系统当前发生了什么，控制器负责根据规则、算法或人工指令做决策，输出则作用">
+<meta property="og:type" content="article">
+<meta property="og:title" content="关于分布式飞行仿真控制系统设计的思考">
+<meta property="og:url" content="http://aniakea.github.io/2026/07/02/%E5%85%B3%E4%BA%8E%E9%A3%9E%E8%A1%8C%E4%BB%BF%E7%9C%9F%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9A%84%E6%80%9D%E8%80%83/index.html">
+<meta property="og:site_name" content="Vanessa">
+<meta property="og:description" content="什么是控制系统 我通常把控制系统理解为一套“观察状态、做出判断、发出指令并修正结果”的机制。它会先获取被控制对象的当前状态，例如位置、速度、姿态、温度或任务进度；然后将这些状态和期望目标进行比较；最后通过某种执行机构或软件指令，让系统逐步靠近期望状态。 在我看来，一个典型的控制系统往往包含三个部分：输入、控制器和输出。输入描述系统当前发生了什么，控制器负责根据规则、算法或人工指令做决策，输出则作用">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/cov2.JPG">
+<meta property="article:published_time" content="2026-07-02T15:38:50.186Z">
+<meta property="article:modified_time" content="2026-07-02T15:38:50.186Z">
+<meta property="article:author" content="lain">
+<meta property="article:tag" content="系统设计">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/cov2.JPG"><link rel="shortcut icon" href="/./img/favicon.JPG"><link rel="canonical" href="http://aniakea.github.io/2026/07/02/%E5%85%B3%E4%BA%8E%E9%A3%9E%E8%A1%8C%E4%BB%BF%E7%9C%9F%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9A%84%E6%80%9D%E8%80%83/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: true,
+  islazyload: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '关于分布式飞行仿真控制系统设计的思考',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: undefined,
+  isToc: true,
+  isShuoshuo: false
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(./img/pic1.JPG);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/./img/favicon.JPG" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">7</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">6</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Timeline</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/dev.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Vanessa</span></a><a class="nav-page-title" href="/"><span class="site-name">关于分布式飞行仿真控制系统设计的思考</span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Timeline</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">关于分布式飞行仿真控制系统设计的思考</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-07-02T15:38:50.186Z" title="发表于 2026-07-02 15:38:50">2026-07-02</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-07-02T15:38:50.186Z" title="更新于 2026-07-02 15:38:50">2026-07-02</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%BC%80%E5%8F%91/">开发</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">5.3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>17分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h2 id="什么是控制系统">什么是控制系统</h2>
+<p>我通常把控制系统理解为一套“观察状态、做出判断、发出指令并修正结果”的机制。它会先获取被控制对象的当前状态，例如位置、速度、姿态、温度或任务进度；然后将这些状态和期望目标进行比较；最后通过某种执行机构或软件指令，让系统逐步靠近期望状态。</p>
+<p>在我看来，一个典型的控制系统往往包含三个部分：输入、控制器和输出。输入描述系统当前发生了什么，控制器负责根据规则、算法或人工指令做决策，输出则作用到具体对象上。比如恒温空调会读取当前温度，和设定温度比较后决定是否制冷；自动驾驶仪会读取飞机姿态、高度和航向，再调整舵面或油门，使飞机保持在预定航迹上。</p>
+<p>放到飞行仿真的场景里，我不太愿意把控制系统只看成几个按钮或命令接口，而是更愿意把它看成连接仿真模型、任务流程、设备状态和人工操作的一层协调机制。它既要能表达“我希望系统变成什么状态”，也要能持续感知“系统现在处于什么状态”，并在二者不一致时进行调度和修正。</p>
+<p>在这篇设计思考里，我关注的主要目标是总体仿真控制。因此我希望这套控制系统承担的不只是单一对象的控制逻辑，还包括多个模拟器的接入与协同、各模拟器自身状态的管理，以及整个仿真任务运行状态的管理。</p>
+<p>也就是说，我更倾向于把它设计成分布式仿真系统中的调度中枢，让各个仿真节点在统一的任务流程和状态约束下协同运行。</p>
+<h2 id="控制系统必要的特点">控制系统必要的特点</h2>
+<p>在设计总体仿真控制系统时，我最关心的不是功能堆得足够多，而是它能不能稳定、清晰地组织一次仿真的完整生命周期。我希望操作者能够知道当前系统处于什么状态，也希望各个仿真节点能够明确自己接下来应该做什么。</p>
+<p>首先，我认为控制系统必须有清晰的状态模型。这里的状态既包括单个模拟器的状态，也包括整个仿真任务的全局状态。比如某个模拟器可能处于未连接、已连接、初始化中、运行中、暂停或故障状态；而整个仿真任务则可能处于准备、运行、暂停、结束或异常终止状态。如果没有统一的状态定义，使用者就很难判断一个控制命令当前是否可以执行，也很难在异常发生时把系统恢复到可理解的状态。</p>
+<p>其次，我希望控制系统有统一的命令入口和控制权管理。启动、暂停、继续、重置、退出等命令看起来简单，但在分布式系统中，这些命令往往会同时影响多个节点。因此我需要保证命令的来源清晰、执行顺序明确，并且尽量避免多个控制端同时发出相互冲突的指令。</p>
+<p>第三，我会特别关注时序一致性。飞行仿真通常不是单个程序独立运行，而是多个模型、设备或服务共同推进仿真过程。控制命令什么时候下发、各节点什么时候切换状态、数据什么时候开始交换，都可能影响最终仿真结果。因此，我希望总控系统尽量保证关键操作在时间和顺序上是可控的。</p>
+<p>第四，我认为控制系统必须具备良好的可观测性。操作者不应该只看到一个“正在运行”的粗略结果，而应该能够看到各个模拟器是否在线、当前处于什么阶段、是否有错误、是否存在响应超时等信息。对于复杂仿真系统来说，我会把日志、状态上报、心跳检测和错误提示看成基础能力，而不是附加功能。</p>
+<p>最后，我还会把可扩展性和容错能力放进基础设计里。随着仿真规模扩大，系统中可能会接入新的模拟器、新的计算节点或新的交互设备。因此我不希望控制系统的接口和某一个具体模拟器强绑定，而是尽量通过统一协议或适配层完成接入。同时，当某个节点异常退出或通信中断时，我也希望总控系统能够及时感知，并给出停止、重连、隔离或降级运行等处理策略。</p>
+<p>概括起来，我希望一个合格的仿真控制系统至少能回答三个问题：现在系统在哪里，接下来系统要去哪里，以及如果中间出了问题应该如何处理。</p>
+<p>在这些特点中，我最看重的是调度的确定性。这里的“确定性”不是要求每一次仿真都在完全相同的真实时间内完成，而是要求控制系统在相同初始条件、相同配置和相同控制命令下，能够按照可预期的顺序推进仿真流程。哪些节点先初始化，哪些节点必须等待依赖项就绪，暂停命令需要等待哪些模块进入安全状态，重置时哪些状态需要先清理，都应该由明确的调度规则决定，而不是依赖消息到达的偶然顺序或人工操作经验。</p>
+<p>在分布式飞行仿真里，我最担心的就是同一个操作在不同运行中产生不同结果：有时某个模拟器已经进入运行状态，另一个模拟器还没有完成初始化；有时数据链路已经开始发送数据，但接收端尚未准备好。这类问题通常很难复现，也会削弱测试和排故的可靠性。因此，我希望总控系统把关键流程设计成可判定的状态迁移和阶段同步，例如启动前的就绪检查、运行前的统一放行、暂停时的同步屏障、异常时的统一处置策略。</p>
+<p>所以在我的设计里，调度确定性可以看作控制系统可靠性的核心。它让系统行为可预测，让问题可复现，也让后续扩展新的模拟器或节点时仍然能够维持清晰的运行秩序。</p>
+<h2 id="分布式飞行仿真系统的特点">分布式飞行仿真系统的特点</h2>
+<p>我理解的分布式飞行仿真系统，核心特点是把原本可能集中在一个程序中的模型、设备和交互过程拆分到多个独立节点上。每个节点可能负责不同的仿真职责，例如飞行动力学计算、视景显示、座舱仪表、操纵负荷、任务环境、外部载荷或数据记录。它们共同组成一次完整的仿真，但每个节点又都有自己的运行进程、状态机、计算周期和通信方式。</p>
+<p>首先，我面对的是明显的异构性。不同模拟器可能由不同语言、不同框架或不同团队开发，对外暴露的接口、启动方式和状态定义也不完全相同。有的模块更接近实时计算程序，有的模块更像显示或交互终端，还有的模块只是提供数据服务。因此，我不能假设所有节点都以完全一致的方式工作，而需要通过统一协议、适配层或状态抽象来屏蔽这些差异。</p>
+<p>其次，我认为分布式飞行仿真对时间关系非常敏感。飞行动力学、控制输入、视景刷新和仪表显示之间存在明确的先后关系。如果某个节点的数据提前、滞后或丢失，操作者看到的仿真结果就可能和真实计算状态不一致。这里的时间同步不一定只指严格的物理时钟同步，也包括仿真步长、数据帧序号、状态切换阶段和事件触发顺序的一致。</p>
+<p>第三，我会把节点之间的数据耦合当成设计重点。飞行动力学模型的输出会影响视景、仪表和任务系统，操纵设备的输入又会反过来影响飞行动力学模型。也就是说，某个节点的问题往往不会停留在本地，而会通过数据链路传递到其他节点。分布式系统看起来是“多个部分独立运行”，但从仿真结果上看，它们又必须表现得像一个整体。</p>
+<p>第四，我不能忽略通信本身带来的不确定性。网络延迟、消息乱序、连接中断、节点响应变慢等问题，在单机程序中可能不存在，但在分布式仿真里会直接影响控制流程。因此，我不能只假设命令发出后所有节点都会立即成功执行，而需要处理确认、超时、重试、失败回报和异常分支。</p>
+<p>最后，我还需要考虑系统较长的生命周期和较高的扩展需求。随着仿真任务变化，系统可能不断接入新的模型、设备或外部系统。如果早期没有设计清晰的节点边界、状态约定和调度规则，后续每增加一个节点都会增加整体控制复杂度，也会让问题定位变得越来越困难。</p>
+<p>因此，我认为分布式飞行仿真系统的难点并不只是“把多个程序连接起来”，而是要让这些独立节点在时间、状态、数据和控制流程上形成一致的整体。这也是为什么我在前面反复强调状态模型、调度确定性和可观测性。</p>
+<h2 id="目前的设计方案">目前的设计方案</h2>
+<p>结合当前的接口设计，我选择把控制系统拆成三个主要部分：控制中心 <code>Center</code>、控制终端 <code>Terminal</code>，以及面向操作者或任务系统的管理面板/调度器。<code>Center</code> 负责终端注册、终端查询和状态汇聚；<code>Terminal</code> 负责把具体模拟器适配成统一的控制接口；管理面板或调度器则根据状态和元信息发起确定性的控制流程。</p>
+<pre><code class="highlight mermaid">flowchart LR
+    Panel[管理面板 / 调度器]
+    Center[&quot;Center&lt;br/&gt;终端注册、查询、状态汇聚&quot;]
+    TerminalA[&quot;Terminal A&lt;br/&gt;飞行动力学 / 座舱 / 视景等&quot;]
+    TerminalB[&quot;Terminal B&lt;br/&gt;其他模拟器或设备&quot;]
+    SimulatorA[具体模拟器 A]
+    SimulatorB[具体模拟器 B]
+
+    TerminalA -- &quot;RegisterTerminal&quot; --&gt; Center
+    TerminalB -- &quot;RegisterTerminal&quot; --&gt; Center
+    Panel -- &quot;QueryTerminal / SubscribeTerminalStatus&quot; --&gt; Center
+    Center -- &quot;SubscribeStatus&quot; --&gt; TerminalA
+    Center -- &quot;SubscribeStatus&quot; --&gt; TerminalB
+    Panel -- &quot;SubscribeMetaStatus&quot; --&gt; TerminalA
+    Panel -- &quot;SubscribeMetaStatus&quot; --&gt; TerminalB
+    Panel -- &quot;Execute / PublishEvent / CancelEvent&quot; --&gt; TerminalA
+    Panel -- &quot;Execute / PublishEvent / CancelEvent&quot; --&gt; TerminalB
+    TerminalA --&gt; SimulatorA
+    TerminalB --&gt; SimulatorB</code></pre>
+<h3 id="Center：注册发现与状态汇聚">Center：注册发现与状态汇聚</h3>
+<p>在这个方案里，我把 <code>Center</code> 看成整个控制系统的目录服务和状态汇聚点。控制终端启动后先向 <code>Center</code> 注册自己的地址、端口和能力信息；管理面板或调度器再通过 <code>Center</code> 查询当前有哪些终端可用，并订阅这些终端的状态变化。</p>
+<figure class="highlight protobuf"><table><tr><td class="code"><pre><span class="line"><span class="keyword">service </span><span class="title class_">Center</span> &#123;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> RegisterTerminal(TerminalInfo) <span class="keyword">returns</span> (TerminalRegisterResponse)</span>;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> UnregisterTerminal(google.protobuf.StringValue) <span class="keyword">returns</span> (control.InvokeResponse)</span>;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> QueryTerminal(google.protobuf.StringValue) <span class="keyword">returns</span> (TerminalInfos)</span>;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> SubscribeTerminalStatus(google.protobuf.StringValue) <span class="keyword">returns</span> (stream TerminalStatus)</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>对我来说，注册信息里最关键的是 <code>TerminalInfo</code>。它不仅包含终端的网络位置，也包含终端支持的模拟类型和命令能力。</p>
+<figure class="highlight protobuf"><table><tr><td class="code"><pre><span class="line"><span class="keyword">message </span><span class="title class_">TerminalInfo</span> &#123;</span><br><span class="line">  <span class="keyword">repeated</span> TerminalMetaInfo meta_info = <span class="number">1</span>;</span><br><span class="line">  <span class="type">string</span> terminal_host = <span class="number">2</span>;</span><br><span class="line">  <span class="type">uint32</span> terminal_port = <span class="number">3</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">message </span><span class="title class_">TerminalMetaInfo</span> &#123;</span><br><span class="line">  <span class="keyword">repeated</span> TerminalType supported_type = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">message </span><span class="title class_">TerminalType</span> &#123;</span><br><span class="line">  <span class="type">string</span> type_name = <span class="number">1</span>;</span><br><span class="line">  <span class="type">string</span> description = <span class="number">2</span>;</span><br><span class="line">  <span class="type">string</span> icon_url = <span class="number">3</span>;</span><br><span class="line">  <span class="keyword">repeated</span> TerminalCommandInfo supported_commands = <span class="number">4</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我这样设计的好处是，控制系统不需要在代码里写死每一种模拟器的能力。一个终端支持哪些机型、哪些配置项、哪些控制命令，都可以在注册阶段暴露给 <code>Center</code>。后续管理面板可以根据这些元信息动态生成操作入口，调度器也可以根据能力信息判断某个仿真流程是否能够执行。</p>
+<h3 id="Terminal：模拟器的统一适配层">Terminal：模拟器的统一适配层</h3>
+<p>我把 <code>Terminal</code> 定位为具体模拟器和控制系统之间的适配层。不同模拟器内部实现可以完全不同，但对外需要提供统一的控制接口，包括命令执行、事件发布、事件取消、状态订阅和元状态订阅。</p>
+<figure class="highlight protobuf"><table><tr><td class="code"><pre><span class="line"><span class="keyword">service </span><span class="title class_">Terminal</span> &#123;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> Execute(Command) <span class="keyword">returns</span> (control.InvokeResponse)</span>;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> PublishEvent(TerminalEvent) <span class="keyword">returns</span> (control.InvokeResponse)</span>;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> CancelEvent(google.protobuf.StringValue) <span class="keyword">returns</span> (control.InvokeResponse)</span>;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> SubscribeStatus(google.protobuf.Empty) <span class="keyword">returns</span> (stream TerminalStatus)</span>;</span><br><span class="line">  <span class="function"><span class="keyword">rpc</span> SubscribeMetaStatus(google.protobuf.Empty) <span class="keyword">returns</span> (stream TerminalMetaStatus)</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在这些接口里，我会把 <code>Execute</code> 看成最核心的控制入口。在当前接口里，我把命令设计成动态结构，通过 <code>id</code> 标识命令，通过 <code>payload</code> 携带参数。</p>
+<figure class="highlight protobuf"><table><tr><td class="code"><pre><span class="line"><span class="keyword">message </span><span class="title class_">Command</span> &#123;</span><br><span class="line">  <span class="type">string</span> id = <span class="number">1</span>;</span><br><span class="line">  <span class="type">string</span> type = <span class="number">2</span>;</span><br><span class="line">  <span class="type">int64</span> timestamp = <span class="number">5</span>;</span><br><span class="line">  map&lt;<span class="type">string</span>, Any&gt; payload = <span class="number">6</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>虽然我采用的是动态命令设计，但我希望终端至少支持 <code>init</code>、<code>reset</code>、<code>start</code>、<code>stop</code>、<code>update</code> 这几个基础命令。这样可以保证不同模拟器即使内部差异很大，也能纳入统一的仿真生命周期管理。如果后续需要暂停、继续、保存快照等能力，我也可以通过 <code>supported_commands</code> 扩展，而不需要改变基础服务结构。</p>
+<p>如果把启动流程抽象出来，我会认为它接近下面这样的伪代码：</p>
+<figure class="highlight typescript"><table><tr><td class="code"><pre><span class="line"><span class="keyword">async</span> <span class="keyword">function</span> <span class="title function_">runSimulation</span>(<span class="params"><span class="attr">plan</span>: <span class="title class_">SimulationPlan</span></span>) &#123;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">const</span> terminal <span class="keyword">of</span> plan.<span class="property">initOrder</span>) &#123;</span><br><span class="line">    <span class="keyword">await</span> terminal.<span class="title function_">execute</span>(&#123; <span class="attr">id</span>: <span class="string">&quot;init&quot;</span>, <span class="attr">payload</span>: plan.<span class="property">config</span>[terminal.<span class="property">id</span>] &#125;);</span><br><span class="line">    <span class="keyword">await</span> <span class="title function_">waitUntilStatus</span>(terminal.<span class="property">id</span>, <span class="string">&quot;ready&quot;</span>, plan.<span class="property">timeoutMs</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">const</span> terminal <span class="keyword">of</span> plan.<span class="property">startOrder</span>) &#123;</span><br><span class="line">    <span class="keyword">await</span> terminal.<span class="title function_">execute</span>(&#123; <span class="attr">id</span>: <span class="string">&quot;start&quot;</span>, <span class="attr">payload</span>: &#123;&#125; &#125;);</span><br><span class="line">    <span class="keyword">await</span> <span class="title function_">waitUntilStatus</span>(terminal.<span class="property">id</span>, <span class="string">&quot;running&quot;</span>, plan.<span class="property">timeoutMs</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这段逻辑的重点不是代码形式本身，而是我需要把调度规则显式化：哪些终端先初始化，哪些状态必须等待，哪些命令可以并行，哪些命令必须串行，都应该由调度计划决定。</p>
+<h3 id="状态通道：高频状态与低频元状态">状态通道：高频状态与低频元状态</h3>
+<p>在当前接口里，我把状态通道拆成两类：<code>TerminalStatus</code> 和 <code>TerminalMetaStatus</code>。前者用于描述终端运行过程中的高频状态，后者用于描述终端的能力、类型和事件列表等低频元信息。</p>
+<figure class="highlight protobuf"><table><tr><td class="code"><pre><span class="line"><span class="keyword">message </span><span class="title class_">TerminalStatus</span> &#123;</span><br><span class="line">  <span class="type">string</span> terminal_id = <span class="number">1</span>;</span><br><span class="line">  <span class="type">bool</span> alive = <span class="number">2</span>;</span><br><span class="line">  <span class="type">string</span> current_type_name = <span class="number">3</span>;</span><br><span class="line">  map&lt;<span class="type">string</span>, Any&gt; current_parameters = <span class="number">6</span>;</span><br><span class="line">  <span class="type">uint64</span> sequence = <span class="number">7</span>;</span><br><span class="line">  <span class="type">int64</span> timestamp = <span class="number">8</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">message </span><span class="title class_">TerminalMetaStatus</span> &#123;</span><br><span class="line">  <span class="type">string</span> terminal_id = <span class="number">1</span>;</span><br><span class="line">  TerminalType current_type = <span class="number">2</span>;</span><br><span class="line">  <span class="keyword">repeated</span> TerminalEventInfo publishable_events = <span class="number">3</span>;</span><br><span class="line">  <span class="keyword">repeated</span> TerminalEventInfo triggered_events = <span class="number">4</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我认为这个拆分是合理的。位置、姿态、速度、运行参数等信息可能变化很快，适合放在 <code>TerminalStatus</code> 中持续推送；当前机型、可发布事件、已触发事件等信息变化较慢，适合放在 <code>TerminalMetaStatus</code> 中低频推送，并在发生变化时立即推送。</p>
+<p>从当前 <code>Center</code> 接口看，我只把 <code>SubscribeTerminalStatus</code> 对外提供给展示端，用来展示终端是否在线、当前参数和高频运行状态；展示端不需要直接关心终端支持哪些事件或当前类型如何变化。管理面板/调度器如果需要实时感知可发布事件列表或当前终端类型变化，则在通过 <code>Center</code> 查询到终端地址后，直接订阅对应 <code>Terminal</code> 的 <code>SubscribeMetaStatus</code>。这样，<code>Center</code> 只承担状态汇聚和发现职责，元状态仍由 <code>Terminal</code> 按需提供。</p>
+<p>当然需要注意一点：如果控制系统要严格执行前文提到的状态模型，当前协议还需要约定终端生命周期状态的表达方式。例如可以先在 <code>current_parameters</code> 中约定一个标准字段：</p>
+<figure class="highlight json"><table><tr><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;lifecycle_state&quot;</span><span class="punctuation">:</span> <span class="string">&quot;ready&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;sim_time_ms&quot;</span><span class="punctuation">:</span> <span class="number">120000</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;frame&quot;</span><span class="punctuation">:</span> <span class="number">3600</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+<p>如果后续状态模型稳定，我也可以把 <code>lifecycle_state</code> 从动态参数提升为显式字段或枚举。这样做可以减少不同终端对状态字符串的自由解释，让调度器更容易判断命令是否允许执行。</p>
+<h3 id="一次典型控制流程">一次典型控制流程</h3>
+<p>按照这个分工，我会把一次典型的控制流程分成注册、发现、订阅、初始化、启动和状态反馈几个阶段。</p>
+<pre><code class="highlight mermaid">sequenceDiagram
+    participant T as Terminal
+    participant C as Center
+    participant P as 管理面板 / 调度器
+    participant S as 具体模拟器
+
+    T-&gt;&gt;C: RegisterTerminal(TerminalInfo)
+    C--&gt;&gt;T: TerminalRegisterResponse(id)
+    C-&gt;&gt;T: SubscribeStatus(Empty)
+    P-&gt;&gt;C: QueryTerminal(terminal_id 或空字符串)
+    C--&gt;&gt;P: TerminalInfos
+    P-&gt;&gt;C: SubscribeTerminalStatus(terminal_id 或空字符串)
+    P-&gt;&gt;T: SubscribeMetaStatus(Empty)
+    P-&gt;&gt;T: Execute(init)
+    T-&gt;&gt;S: 初始化模拟器
+    T--&gt;&gt;P: InvokeResponse
+    T--&gt;&gt;C: TerminalStatus(sequence, timestamp, ready)
+    C--&gt;&gt;P: stream TerminalStatus
+    P-&gt;&gt;T: Execute(start)
+    T-&gt;&gt;S: 启动仿真
+    T--&gt;&gt;C: TerminalStatus(sequence, timestamp, running)
+    C--&gt;&gt;P: stream TerminalStatus</code></pre>
+<p>在这个流程里，我让 <code>Center</code> 主要解决“有哪些终端”和“终端当前是什么状态”的问题；让 <code>Terminal</code> 解决“如何控制具体模拟器”的问题；让管理面板/调度器解决“在什么时机对哪些终端下发什么命令”的问题。三者职责分开后，系统更容易扩展，也更容易定位问题。</p>
+<h3 id="状态迁移与确定性调度">状态迁移与确定性调度</h3>
+<p>为了保证调度确定性，我不希望控制系统只把命令当成普通 RPC 调用，而是要把每个命令都放进状态迁移中理解。也就是说，<code>init</code>、<code>start</code>、<code>stop</code>、<code>reset</code> 等命令只有在特定状态下才允许执行，执行后也必须等待终端状态进入预期结果。这也是飞行仿真分布式系统和很多面向服务的分布式系统之间的一个重要区别：后者通常倾向于 <strong>stateless</strong> 的服务设计，而这里更接近 <strong>stateful</strong> 的流程控制。</p>
+<pre><code class="highlight mermaid">stateDiagram-v2
+    state &quot;未注册&quot; as Unregistered
+    state &quot;已注册&quot; as Registered
+    state &quot;已连接&quot; as Connected
+    state &quot;初始化中&quot; as Initializing
+    state &quot;就绪&quot; as Ready
+    state &quot;运行中&quot; as Running
+    state &quot;停止中&quot; as Stopping
+    state &quot;已停止&quot; as Stopped
+    state &quot;重置中&quot; as Resetting
+    state &quot;故障&quot; as Fault
+
+    [*] --&gt; Unregistered
+    Unregistered --&gt; Registered: RegisterTerminal
+    Registered --&gt; Connected: SubscribeStatus 成功
+    Connected --&gt; Initializing: Execute(init)
+    Initializing --&gt; Ready: TerminalStatus = ready
+    Ready --&gt; Running: Execute(start)
+    Running --&gt; Stopping: Execute(stop)
+    Stopping --&gt; Stopped: TerminalStatus = stopped
+    Stopped --&gt; Resetting: Execute(reset)
+    Resetting --&gt; Ready: TerminalStatus = ready
+    Connected --&gt; Fault: 心跳超时 / alive=false
+    Initializing --&gt; Fault: 初始化失败
+    Running --&gt; Fault: 运行异常 / 通信中断
+    Fault --&gt; Registered: 重新注册或重连</code></pre>
+<p>在这个模型下，我在开发时可以为每个阶段设置明确的进入条件和退出条件。例如只有所有关键终端都完成注册并进入 <code>ready</code> 状态后，调度器才统一下发 <code>start</code>；如果某个终端超时没有进入预期状态，调度器就进入异常处理流程，而不是继续向后执行。</p>
+<h3 id="事件机制">事件机制</h3>
+<p>除了生命周期命令，我在当前接口中还保留了事件发布和取消能力。</p>
+<figure class="highlight protobuf"><table><tr><td class="code"><pre><span class="line"><span class="keyword">message </span><span class="title class_">TerminalEvent</span> &#123;</span><br><span class="line">  <span class="type">string</span> event_id = <span class="number">1</span>;</span><br><span class="line">  <span class="type">uint64</span> trigger_delay_ms = <span class="number">2</span>;</span><br><span class="line">  <span class="type">uint64</span> repeat_period_ms = <span class="number">3</span>;</span><br><span class="line">  map&lt;<span class="type">string</span>, Any&gt; payload = <span class="number">4</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我会把事件机制用于描述那些不一定改变整体生命周期、但会影响仿真过程的动作，例如触发某个故障、改变环境条件、注入任务事件或启动某个定时行为。<code>trigger_delay_ms</code> 可以描述延迟触发，<code>repeat_period_ms</code> 可以描述周期性事件，<code>CancelEvent</code> 则用于取消已经发布但尚未结束的事件。</p>
+<p>这里需要保持一个边界：普通终端可以通过 <code>publishable_events</code> 暴露自己支持的事件能力，但特情类事件更适合由控制系统统一定义和管理。这样可以避免终端内部实现和控制系统预定义的特情逻辑发生冲突，也有利于在不同训练任务中复用同一套特情脚本。</p>
+<h3 id="小结">小结</h3>
+<p>总体来看，我认为当前接口设计已经具备分布式仿真控制系统的基本骨架：<code>Center</code> 负责发现和聚合，<code>Terminal</code> 负责适配和执行，状态订阅提供可观测性，命令与事件接口提供控制入口。后续真正影响系统可靠性的重点，是把动态命令、动态状态和动态事件进一步纳入统一的状态模型和调度规则中，让每一次仿真流程都可以被解释、被追踪、被复现。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://aniakea.github.io">lain</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://aniakea.github.io/2026/07/02/%E5%85%B3%E4%BA%8E%E9%A3%9E%E8%A1%8C%E4%BB%BF%E7%9C%9F%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9A%84%E6%80%9D%E8%80%83/">http://aniakea.github.io/2026/07/02/%E5%85%B3%E4%BA%8E%E9%A3%9E%E8%A1%8C%E4%BB%BF%E7%9C%9F%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9A%84%E6%80%9D%E8%80%83/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://aniakea.github.io" target="_blank">Vanessa</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1/">系统设计</a></div><div class="post-share"><div class="social-share" data-image="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/cov2.JPG" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/07/02/anaconda%E5%AE%89%E8%A3%85/" title="anaconda安装"><img class="cover" src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/cov5.JPG" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">anaconda安装</div></div><div class="info-2"><div class="info-item-1">为什么需要 anaconda python 本身提供了一个项目级别的虚拟环境 但是如果我们需要在不同的项目中使用不同的python版本 这就是python自己提供的 venv 无法做到的事情 所以我们需要一个外部的环境管理器来做这种级别的隔离 这就是使用 anaconda 的原因 下载和安装 通过官网或者清华镜像站下载 官网需要注册, 所以通常建议在镜像站下载 这里主要描述linux下的安装 先下载 wget --user-agent=&quot;Mozilla&quot; https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/$&#123;select_version&#125;.sh 这里加user-agent是因为清华源http请求需要这个 安装前需要对下载下来的 sh 文件授权 chmod 777 ./$&#123;select_version&#125;.sh 直接执行脚本按照提示安装即可 基本使用 安装完成后会有一个 conda 指令, 通常情况下我们通过这个指令进行操作 # 安装包conda install...</div></div></div></a><a class="pagination-related" href="/2026/07/02/%E5%B0%9D%E8%AF%95%E5%9C%A8c-%E4%B8%AD%E5%B5%8C%E5%85%A5python%E8%A7%A3%E9%87%8A%E5%99%A8%E7%9A%84%E8%BF%87%E7%A8%8B/" title="在c++中嵌入python解释器"><img class="cover" src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/IMG_0239.PNG" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">在c++中嵌入python解释器</div></div><div class="info-2"><div class="info-item-1">还是哪个展示应力模型的项目, 由于是基于之前的项目的, 而之前的项目的gui是qt做的, 之前又没有告诉我需要嵌入这个程序, 而我python的已经写完了 所以开始研究嵌入方案 首先需要确定python是否独立运行于老的gui程序 如果独立运行的情况, 我需要在python端额外写一个网络模块来和老gui程序进行交互,两边都得改, 怪麻烦的, 不考虑 非独立运行的话, 就需要嵌入python解释器来执行我写的python代码 准备 首先我们先安装 pybind11 库, 这是个 head-only 的库, 所以只需要下载源码, 在项目中添加头文件搜索的路径即可 先下载, 最简单的方案就是去github下载zip(he 为了不出现违法收入, 我们使用gitee的镜像, 链接 直接一键下载或者使用git # if has sshgit clone git@gitee.com:mirrors/pybind11.git# or use httpsgit clone https://gitee.com/mirrors/pybind11.git 如果是项目是cmake的话可以直接用...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/./img/favicon.JPG" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">lain</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">7</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">6</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Aniakea"><i class="fab fa-github"></i><span>康康</span></a></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.</span> <span class="toc-text">什么是控制系统</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F%E5%BF%85%E8%A6%81%E7%9A%84%E7%89%B9%E7%82%B9"><span class="toc-number">2.</span> <span class="toc-text">控制系统必要的特点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E9%A3%9E%E8%A1%8C%E4%BB%BF%E7%9C%9F%E7%B3%BB%E7%BB%9F%E7%9A%84%E7%89%B9%E7%82%B9"><span class="toc-number">3.</span> <span class="toc-text">分布式飞行仿真系统的特点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%AE%E5%89%8D%E7%9A%84%E8%AE%BE%E8%AE%A1%E6%96%B9%E6%A1%88"><span class="toc-number">4.</span> <span class="toc-text">目前的设计方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Center%EF%BC%9A%E6%B3%A8%E5%86%8C%E5%8F%91%E7%8E%B0%E4%B8%8E%E7%8A%B6%E6%80%81%E6%B1%87%E8%81%9A"><span class="toc-number">4.1.</span> <span class="toc-text">Center：注册发现与状态汇聚</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Terminal%EF%BC%9A%E6%A8%A1%E6%8B%9F%E5%99%A8%E7%9A%84%E7%BB%9F%E4%B8%80%E9%80%82%E9%85%8D%E5%B1%82"><span class="toc-number">4.2.</span> <span class="toc-text">Terminal：模拟器的统一适配层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E9%80%9A%E9%81%93%EF%BC%9A%E9%AB%98%E9%A2%91%E7%8A%B6%E6%80%81%E4%B8%8E%E4%BD%8E%E9%A2%91%E5%85%83%E7%8A%B6%E6%80%81"><span class="toc-number">4.3.</span> <span class="toc-text">状态通道：高频状态与低频元状态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E6%AC%A1%E5%85%B8%E5%9E%8B%E6%8E%A7%E5%88%B6%E6%B5%81%E7%A8%8B"><span class="toc-number">4.4.</span> <span class="toc-text">一次典型控制流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E8%BF%81%E7%A7%BB%E4%B8%8E%E7%A1%AE%E5%AE%9A%E6%80%A7%E8%B0%83%E5%BA%A6"><span class="toc-number">4.5.</span> <span class="toc-text">状态迁移与确定性调度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8B%E4%BB%B6%E6%9C%BA%E5%88%B6"><span class="toc-number">4.6.</span> <span class="toc-text">事件机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">4.7.</span> <span class="toc-text">小结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2024/12/19/1/" title="算法-2024-12-19"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/IMG_0239.PNG" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="算法-2024-12-19"/></a><div class="content"><a class="title" href="/2024/12/19/1/" title="算法-2024-12-19">算法-2024-12-19</a><time datetime="2026-07-02T15:38:50.186Z" title="更新于 2026-07-02 15:38:50">2026-07-02</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2024/12/23/2/" title="算法-2024-12-23"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/IMG_0239.PNG" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="算法-2024-12-23"/></a><div class="content"><a class="title" href="/2024/12/23/2/" title="算法-2024-12-23">算法-2024-12-23</a><time datetime="2026-07-02T15:38:50.186Z" title="更新于 2026-07-02 15:38:50">2026-07-02</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2024/12/25/3/" title="算法-2024-12-25"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/IMG_0239.PNG" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="算法-2024-12-25"/></a><div class="content"><a class="title" href="/2024/12/25/3/" title="算法-2024-12-25">算法-2024-12-25</a><time datetime="2026-07-02T15:38:50.186Z" title="更新于 2026-07-02 15:38:50">2026-07-02</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/02/anaconda%E5%AE%89%E8%A3%85/" title="anaconda安装"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/cov5.JPG" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="anaconda安装"/></a><div class="content"><a class="title" href="/2026/07/02/anaconda%E5%AE%89%E8%A3%85/" title="anaconda安装">anaconda安装</a><time datetime="2026-07-02T15:38:50.186Z" title="更新于 2026-07-02 15:38:50">2026-07-02</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2024/11/27/pyvista%E5%88%9D%E8%AF%95/" title="pyvista初试"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.jsdelivr.net/gh/Aniakea/blog_pic@main/blog/Images/cov5.JPG" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="pyvista初试"/></a><div class="content"><a class="title" href="/2024/11/27/pyvista%E5%88%9D%E8%AF%95/" title="pyvista初试">pyvista初试</a><time datetime="2026-07-02T15:38:50.186Z" title="更新于 2026-07-02 15:38:50">2026-07-02</time></div></div></div></div></div></div></main><footer id="footer" style="background: transparent;"><div id="footer-wrap"><div class="copyright">&copy;2024 - 2026 By lain</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">for fun</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload/dist/lazyload.iife.min.js"></script><div class="js-pjax"><script>(() => {
+  const loadMathjax = () => {
+    if (!window.MathJax) {
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          tags: 'all',
+        },
+        chtml: {
+          scale: 1.1
+        },
+        options: {
+          enableMenu: true,
+          renderActions: {
+            findScript: [10, doc => {
+              for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+                const display = !!node.type.match(/; *mode=display/)
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display)
+                const text = document.createTextNode('')
+                node.parentNode.replaceChild(text, node)
+                math.start = {node: text, delim: '', n: 0}
+                math.end = {node: text, delim: '', n: 0}
+                doc.math.push(math)
+              }
+            }, '']
+          }
+        }
+      }
+      
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/mathjax/es5/tex-mml-chtml.min.js'
+      script.id = 'MathJax-script'
+      script.async = true
+      document.head.appendChild(script)
+    } else {
+      MathJax.startup.document.state(0)
+      MathJax.texReset()
+      MathJax.typesetPromise()
+    }
+  }
+
+  btf.addGlobalFn('encrypt', loadMathjax, 'mathjax')
+  window.pjax ? loadMathjax() : window.addEventListener('load', loadMathjax)
+})()</script><script>(() => {
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      const mermaidThemeConfig = `%%{init:{ 'theme':'${theme}'}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+      }
+
+      // mermaid v9 and v10 compatibility
+      typeof renderFn === 'string' ? renderMermaid(renderFn) : renderFn.then(({ svg }) => renderMermaid(svg))
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (true) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
